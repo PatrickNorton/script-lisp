@@ -1,0 +1,84 @@
+(defmacro defun (name args &body body)
+  `(setfn (quote ,name) (lambda ,args ,@body)))
+
+;; TODO: Make this take multiple values?
+(defmacro setq (name val)
+  `(setf (quote ,name) ,val))
+
+(defmacro if (condn true false)
+  `(cond
+     (,condn ,true)
+     (t ,false)))
+
+(defmacro when (cond &rest body)
+  `(if ,cond (progn ,@body) nil))
+
+(defmacro unless (cond &rest body)
+  `(if ,cond nil (progn ,@body)))
+
+(defmacro pushf (list value)
+  `(setf ,value (push ,list ,value)))
+
+(defmacro case (val &rest forms)
+  (let ((case-sym (gensym)))
+    `(let ((,case-sym ,val))
+      (cond
+        ,@(map forms (lambda (form)
+                       (let ((condn (car form))
+                             (body (cdr form)))
+                         (if (listp condn)
+                             `(member ,case-sym ,condn)
+                           `(eq ,case-sym ,cond)))))))))
+
+(defmacro incf (val)
+  ;; TODO: Prevent double-evaluation
+  `(setq ,val (+ ,val 1)))
+
+(defmacro dolist (pred &body forms)
+  (let ((len (gensym))
+        (idx (gensym))
+        (iter (gensym)))
+    `(let ((,iter ,(nth 1 pred)))
+       (let ((,len (length ,iter))
+             (,idx 0))
+         (while (< ,idx ,len)
+           (let ((,(nth 0 pred) (nth ,idx ,iter)))
+             ,@forms
+             (incf ,idx)))))))
+
+(defun println (val)
+  (print val)
+  (print "\n"))
+
+(defun todo (&optional msg)
+  (error "Error - not yet implemented")) ;; TODO: Use message
+
+(defun andf (a b)
+  (if a (if b t nil) nil))
+
+(defun orf (a b)
+  (if a t (if b t nil)))
+
+(defun foldl (function initial-value sequence)
+  (let ((current initial-value))
+    (dolist (x sequence)
+      (setq current (funcall function current x)))
+    current))
+
+(defun any (pred vals)
+  (foldl #'orf nil (map pred vals)))
+
+(defun all (pred vals)
+  (foldl #'andf t (map pred vals)))
+
+(defmacro pcase (val &rest forms)
+  (todo))
+
+(defun format (fmt &rest forms)
+  (todo))
+
+(defun sum (vals)
+  (foldl #'+ 0 vals))
+
+(defun prod (vals)
+  (foldl #'* 1 vals))
