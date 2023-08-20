@@ -1,6 +1,5 @@
 use std::{
     borrow::Cow,
-    collections::HashMap,
     error::Error,
     fmt::{Display, Write},
     io,
@@ -10,7 +9,7 @@ use std::{
 use itertools::Itertools;
 use num::{BigInt, BigRational};
 
-use crate::env::LispEnv;
+use crate::{env::LispEnv, params::LispParams};
 
 pub type NativeFn = fn(&mut LispEnv, &[LispObject]) -> Result<LispObject, LispErr>;
 
@@ -38,19 +37,6 @@ pub struct LispErr {
 pub struct LispFunction {
     pub params: Rc<LispParams>,
     pub body: Rc<LispObject>,
-}
-
-#[derive(Debug)]
-pub struct LispParams {
-    values: Vec<(String, ParamTag)>,
-}
-
-#[derive(Debug)]
-enum ParamTag {
-    Normal,
-    Optional,
-    Rest,
-    Keyword,
 }
 
 pub type LispSpForm = fn(&mut LispEnv, &[LispObject]) -> Result<LispObject, LispErr>;
@@ -83,76 +69,6 @@ impl LispErr {
         Self {
             reason,
             source: None,
-        }
-    }
-}
-
-impl LispParams {
-    pub fn parse(val: &LispObject) -> Result<Self, LispErr> {
-        match val {
-            LispObject::Vec(vals) => {
-                let mut args = Vec::new();
-                let mut val_iter = vals.iter();
-                let mut has_rest = false;
-                while let Option::Some(val) = val_iter.next() {
-                    if has_rest {
-                        return Err(LispErr::new(
-                            "&rest must be last argument in argument list".to_string(),
-                        ));
-                    }
-                    let s = Self::ensure_symbol(val)?;
-                    if s.starts_with('&') {
-                        let symb = Self::ensure_symbol(val_iter.next().unwrap())?;
-                        match s {
-                            "&rest" | "&body" => {
-                                has_rest = true;
-                                args.push((symb.to_string(), ParamTag::Rest))
-                            }
-                            "&optional" => args.push((symb.to_string(), ParamTag::Optional)),
-                            "&key" => args.push((symb.to_string(), ParamTag::Keyword)),
-                            s => {
-                                return Err(LispErr::new(format!(
-                                    "Unknown tag in argument list: {}",
-                                    s
-                                )))
-                            }
-                        }
-                    } else {
-                        args.push((s.to_string(), ParamTag::Normal))
-                    }
-                }
-                Ok(LispParams { values: args })
-            }
-            val => Err(LispErr::new(format!("Invalid argument list: {}", val))),
-        }
-    }
-
-    pub fn to_frame(&self, vals: &[LispObject]) -> Result<HashMap<String, LispObject>, LispErr> {
-        if self.values.is_empty() && vals.is_empty() {
-            Ok(HashMap::new())
-        } else {
-            let mut map = HashMap::with_capacity(self.values.len());
-            let mut vals = vals.iter();
-            for (param, tag) in &self.values {
-                match tag {
-                    ParamTag::Normal => map.insert(param.clone(), vals.next().unwrap().clone()),
-                    ParamTag::Optional => todo!(),
-                    ParamTag::Rest => {
-                        // Break here is valid b/c we know &rest is always last
-                        map.insert(param.clone(), vals.cloned().collect());
-                        break;
-                    }
-                    ParamTag::Keyword => todo!(),
-                };
-            }
-            Ok(map)
-        }
-    }
-
-    fn ensure_symbol(val: &LispObject) -> Result<&str, LispErr> {
-        match val {
-            LispObject::Symbol(s) => Ok(s),
-            _ => Err(LispErr::new(format!("Expected symbol, got {}", val))),
         }
     }
 }

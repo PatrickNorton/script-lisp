@@ -16,6 +16,7 @@ mod eval;
 mod lexer;
 mod macroexpand;
 mod native_fns;
+mod params;
 mod parser;
 mod special_forms;
 mod types;

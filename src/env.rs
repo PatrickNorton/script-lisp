@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap};
 
-use crate::types::{LispObject, LispParams};
+use crate::{params::LispParams, types::LispObject};
 
 #[derive(Debug)]
 pub struct LispEnv {

@@ -1,7 +1,8 @@
 use crate::{
     env::LispEnv,
     eval, macroexpand,
-    types::{LispErr, LispFunction, LispObject, LispParams, LispSpForm},
+    params::LispParams,
+    types::{LispErr, LispFunction, LispObject, LispSpForm},
 };
 
 use itertools::{process_results, put_back, Itertools};
