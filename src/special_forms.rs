@@ -5,15 +5,14 @@ use crate::{
     types::{LispErr, LispFunction, LispObject, LispSpForm},
 };
 
-use itertools::{process_results, put_back, Itertools};
+use itertools::{chain, process_results, put_back, Itertools};
 
 pub fn get_special_form(symbol_name: &str) -> Option<(LispSpForm, LispSpForm)> {
     // TODO: Loop primitive (while?), file imports
     match symbol_name {
         "let" => Some((let_eval, let_macroexpand)),
         "cond" => Some((cond_eval, cond_macroexpand)),
-        // Lambdas eval the same way whether in macroexpand or eval
-        "lambda" => Some((lambda_eval, lambda_eval)),
+        "lambda" => Some((lambda_eval, lambda_macroexpand)),
         "eval" => todo!("eval not implemented yet"), // TODO: Make this a function?
         "progn" => Some((progn_eval, progn_macroexpand)),
         "quote" => Some((quote_eval, quote_macroexpand)),
@@ -122,10 +121,21 @@ fn cond_eval(env: &mut LispEnv, args: &[LispObject]) -> Result<LispObject, LispE
     Ok(LispObject::nil())
 }
 
+fn lambda_macroexpand(env: &mut LispEnv, args: &[LispObject]) -> Result<LispObject, LispErr> {
+    chain(
+        vec![Ok(LispObject::Symbol("lambda".into())), Ok(args[0].clone())].into_iter(),
+        args[1..].iter().map(|x| macroexpand(env, x)),
+    )
+    .collect()
+}
+
 fn lambda_eval(env: &mut LispEnv, args: &[LispObject]) -> Result<LispObject, LispErr> {
-    let params = LispParams::parse(&args[0])?;
+    let lexical = env.clone_lexical();
+    let params = LispParams::parse(env, &args[0])?;
     let body = progn_macroexpand(env, &args[1..])?;
-    Ok(LispObject::Function(LispFunction::new(params, body)))
+    Ok(LispObject::Function(LispFunction::new(
+        lexical, params, body,
+    )))
 }
 
 fn progn_macroexpand(env: &mut LispEnv, args: &[LispObject]) -> Result<LispObject, LispErr> {
@@ -175,7 +185,7 @@ fn defmacro_macroexpand(env: &mut LispEnv, args: &[LispObject]) -> Result<LispOb
         LispObject::Symbol(s) => s.to_string(),
         o => return Err(LispErr::new(format!("Invalid name for macro: {}", o))),
     };
-    let arglist = LispParams::parse(&args[1])?;
+    let arglist = LispParams::parse(env, &args[1])?;
     let body = &args[2..];
     env.add_macro(name, arglist, body.to_vec());
     Ok(LispObject::nil())

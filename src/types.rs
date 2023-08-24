@@ -35,6 +35,7 @@ pub struct LispErr {
 
 #[derive(Debug, Clone)]
 pub struct LispFunction {
+    pub env: Rc<LispLexical>,
     pub params: Rc<LispParams>,
     pub body: Rc<LispObject>,
 }
@@ -56,8 +57,9 @@ impl LispObject {
 }
 
 impl LispFunction {
-    pub fn new(params: LispParams, body: LispObject) -> Self {
+    pub fn new(env: LispLexical, params: LispParams, body: LispObject) -> Self {
         Self {
+            env: Rc::new(env),
             params: Rc::new(params),
             body: Rc::new(body),
         }

@@ -41,6 +41,16 @@ struct ParamIter<T> {
 }
 
 impl LispParams {
+    pub const fn empty() -> Self {
+        Self {
+            normal_args: Vec::new(),
+            optional_args: Vec::new(),
+            rest_arg: None,
+            kwargs: Vec::new(),
+            rest_kwarg: None,
+        }
+    }
+
     /// Parses a parameter list from a given [`LispObject`].
     ///
     /// # Syntax
@@ -61,6 +71,10 @@ impl LispParams {
     }
 
     fn parse_inner(env: &mut LispEnv, vals: &[LispObject]) -> Result<Self, LispErr> {
+        // Shortcut for empty argument lists
+        if vals.is_empty() {
+            return Ok(Self::empty());
+        }
         let mut index = 0;
         let mut skip_to = SkipTo::Optional;
         let normal_args = Self::parse_normal_args(vals, &mut index, &mut skip_to)?;
@@ -412,7 +426,7 @@ impl<'a, T: Iterator<Item = &'a LispObject>> ParamIter<T> {
                 let value = self.value.next().ok_or_else(|| {
                     LispErr::new("Keyword tag cannot be last argument".to_string())
                 })?;
-                Ok(Some((Some(&s[1..]), value)))
+                Ok(Some((Some(s), value)))
             }
             Some(next) => Ok(Some((None, next))),
         }

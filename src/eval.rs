@@ -79,8 +79,10 @@ pub fn eval_fn(
     func: &LispFunction,
     vals: &[LispObject],
 ) -> Result<LispObject, LispErr> {
-    env.add_frame(func.params.to_frame(vals)?);
-    let result = eval(env, &func.body);
-    env.remove_frame();
-    result
+    env.with_lexical((*func.env).clone(), |env| {
+        env.add_frame(func.params.to_frame(vals)?);
+        let result = eval(env, &func.body);
+        env.remove_frame();
+        result
+    })
 }
